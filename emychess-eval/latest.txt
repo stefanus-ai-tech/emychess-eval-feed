@@ -1,9 +1,9 @@
 version=1
-request_id=bootstrap
+request_id=setup-1787840631
 revision=0
 fen=rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 white_score_type=cp
-white_score=35
+white_score=47
 depth=15
 bestmove=e2e4
-updated_at=2026-08-27T21:20:26+07:00
+updated_at=2026-08-27T21:23:54+07:00
