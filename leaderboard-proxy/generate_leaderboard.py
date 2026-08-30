@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch VRChess rankings and emit the compact VRChat string-loading format."""
+"""Fetch VRChess rankings and emit compact JSON for VRChat string loading."""
 
 from __future__ import annotations
 
@@ -31,10 +31,6 @@ def find_rows(value: Any) -> list[dict[str, Any]]:
     return []
 
 
-def clean(value: Any) -> str:
-    return str("" if value is None else value).replace("\t", " ").replace("\r", " ").replace("\n", " ")
-
-
 def first(row: dict[str, Any], *keys: str, default: Any = "") -> Any:
     for key in keys:
         if key in row and row[key] is not None:
@@ -42,30 +38,43 @@ def first(row: dict[str, Any], *keys: str, default: Any = "") -> Any:
     return default
 
 
+def clean_text(value: Any, default: str = "") -> str:
+    text = str(default if value is None else value)
+    return text.replace("\t", " ").replace("\r", " ").replace("\n", " ")
+
+
+def clean_integer(value: Any, default: int = 0) -> int:
+    try:
+        return int(float(value))
+    except (TypeError, ValueError, OverflowError):
+        return default
+
+
 def build_output(payload: Any) -> str:
     rows = find_rows(payload)
     if not rows:
         raise ValueError("API response did not contain a rankings/player array")
 
-    output = [
-        FORMAT_MARKER,
-        "updated_at\t" + datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-        "rank\tusername\trating\tgames\twins\tdraws\tlosses",
-    ]
-
+    players: list[dict[str, Any]] = []
     for index, row in enumerate(rows, start=1):
-        values = (
-            first(row, "rank", "position", default=index),
-            first(row, "username", "name", "player", default="Unknown"),
-            first(row, "rating", "elo", default=0),
-            first(row, "games_played", "total_matches", "games", default=0),
-            first(row, "wins", default=0),
-            first(row, "draws", default=0),
-            first(row, "losses", default=0),
+        players.append(
+            {
+                "rank": clean_integer(first(row, "rank", "position", default=index), index),
+                "username": clean_text(first(row, "username", "name", "player", default="Unknown"), "Unknown"),
+                "rating": clean_integer(first(row, "rating", "elo", default=0)),
+                "games": clean_integer(first(row, "games_played", "total_matches", "games", default=0)),
+                "wins": clean_integer(first(row, "wins", default=0)),
+                "draws": clean_integer(first(row, "draws", default=0)),
+                "losses": clean_integer(first(row, "losses", default=0)),
+            }
         )
-        output.append("\t".join(clean(value) for value in values))
 
-    return "\n".join(output) + "\n"
+    output = {
+        "format": FORMAT_MARKER,
+        "updated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "players": players,
+    }
+    return json.dumps(output, ensure_ascii=False, separators=(",", ":")) + "\n"
 
 
 def main() -> int:
