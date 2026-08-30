@@ -2,6 +2,12 @@ name: Update VRChat leaderboard
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/update-vrchat-leaderboard.yml
+      - leaderboard-proxy/**
   schedule:
     - cron: "*/10 * * * *"
 
@@ -27,9 +33,8 @@ jobs:
 
       - name: Build leaderboard bridge
         env:
-          LEADERBOARD_API_URL: ${{ vars.LEADERBOARD_API_URL }}
+          LEADERBOARD_API_URL: ${{ vars.LEADERBOARD_API_URL || 'https://chess.cvar1984.net/index.php?rankings=1' }}
         run: |
-          test -n "$LEADERBOARD_API_URL"
           python3 leaderboard-proxy/generate_leaderboard.py "$LEADERBOARD_API_URL" published-site/leaderboard/index.html
 
       - name: Publish leaderboard without replacing the eval feed
