@@ -33,9 +33,22 @@ jobs:
 
       - name: Build leaderboard bridge
         env:
-          LEADERBOARD_API_URL: ${{ vars.LEADERBOARD_API_URL || 'https://chess.cvar1984.net/index.php?rankings=1' }}
+          LEADERBOARD_API_URL: ${{ vars.LEADERBOARD_API_URL || 'https://chess.cvar1984.net/api/rankings' }}
         run: |
-          python3 leaderboard-proxy/generate_leaderboard.py "$LEADERBOARD_API_URL" published-site/leaderboard/index.html
+          if python3 leaderboard-proxy/generate_leaderboard.py "$LEADERBOARD_API_URL" published-site/leaderboard/index.html; then
+            exit 0
+          fi
+
+          echo "::group::Leaderboard API diagnostics (fresh request)"
+          curl --location --include --silent --show-error \
+            --connect-timeout 10 --max-time 30 \
+            -H 'Accept: application/json' \
+            -A 'VRChessIndonesia-GitHub-Pages-Bridge/1.0' \
+            "$LEADERBOARD_API_URL" || true
+          printf '\n'
+          echo "::endgroup::"
+          echo "::error::Leaderboard generation failed. Check the API response in the diagnostics above."
+          exit 1
 
       - name: Publish leaderboard without replacing the eval feed
         working-directory: published-site
